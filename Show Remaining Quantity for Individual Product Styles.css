@@ -1,0 +1,9 @@
+.single_add_to_cart_button.button.alt {
+  margin: 0 !important;
+}
+form.cart {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
