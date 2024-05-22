@@ -115,8 +115,17 @@ function display_product_stock_info() {
 		
 		echo "<div class='prodInfo'>";
 		echo "<p>Item ID: <b>$item_id</b></p>";
-		echo "<p>Item SKU:<br><b>$item_code</b></p>";
+		echo "<p>Item SKU: <b>$item_code</b></p>";
 		echo "<p>Stocks Left: <b>$item_stocks</b></p>";
 		echo "</div>";
+
+        if ($item_stocks == 0) {
+            echo "<script type='text/javascript'>
+                    jQuery(document).ready(function($) {
+                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                    });
+                  </script>";
+        }
+
 	}
 }
