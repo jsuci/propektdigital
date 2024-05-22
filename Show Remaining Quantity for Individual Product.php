@@ -1,7 +1,7 @@
 ini_set('display_errors', 0);
 
 
-add_action('woocommerce_before_add_to_cart_button', 'display_product_stock_info', 20);
+add_action('woocommerce_after_add_to_cart_form', 'display_product_stock_info', 20);
 
 function get_item_id_by_item_code($itemCode) {
     $soap_request = '<?xml version="1.0" encoding="utf-8"?>
