@@ -228,7 +228,6 @@ function update_erp_user_from_order($order) {
     $user_email = $order->get_billing_email();
     $billing_country = $order->get_billing_country();
     $billing_postcode = $order->get_billing_postcode();
-    $website = "GO_ALIGN_PILATES";
     
     // Get the ERP customer ID from user meta
     $user_id = $order->get_user_id();
@@ -263,8 +262,6 @@ function update_erp_user_from_order($order) {
                 <fax></fax>
                 <address2>'.$billing_address_2.'</address2>
                 <postalcode>'.$billing_postcode.'</postalcode>
-                <website>'.$website.'</website>
-				<customergrp>24</customergrp>
             </updateUser>
         </soap:Body>
     </soap:Envelope>';
