@@ -109,7 +109,6 @@ function get_item_stock_by_item_id($itemId) {
 
     return $stock_items;
 }
-add_action('woocommerce_after_add_to_cart_form', 'display_product_stock_info', 20);
 
 function display_product_stock_info() {
     global $product;
