@@ -95,37 +95,95 @@ function get_item_stock_by_item_id($itemId) {
     $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
     $xml->registerXPathNamespace('ns', 'http://klozinc.exocloud.ca/');
 
-    // Extract currencies
-    $item_stocks = $xml->xpath('//ns:RemQty')[0];
+    // Extract stock items
+    $stock_items = [];
+    foreach ($xml->xpath('//ns:Stock') as $stock) {
+        $stock_items[] = [
+            'Item' => (string)$stock->Item,
+            'Color' => (string)$stock->Color,
+            'Size' => (string)$stock->Size,
+            'Qty' => (float)$stock->Qty,
+            'RemQty' => (float)$stock->RemQty
+        ];
+    }
 
-	return intval($item_stocks);
+    return $stock_items;
 }
 
 function display_product_stock_info() {
     global $product;
 
-	if ($product) {
-		$item_code = $product->get_sku();
-		$item_id = get_item_id_by_item_code($item_code);
-		$item_stocks = get_item_stock_by_item_id($item_id);
-		
-		if (empty($item_id)) {
-			return;
-		}
-		
-		echo "<div class='prodInfo'>";
-		echo "<p>Item ID: <b>$item_id</b></p>";
-		echo "<p>Item SKU: <b>$item_code</b></p>";
-		echo "<p>Stocks Left: <b>$item_stocks</b></p>";
-		echo "</div>";
-
-        if ($item_stocks == 0) {
-            echo "<script type='text/javascript'>
-                    jQuery(document).ready(function($) {
-                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
-                    });
-                  </script>";
+    if ($product) {
+        $item_code = $product->get_sku();
+        $item_id = get_item_id_by_item_code($item_code);
+        $item_stocks = get_item_stock_by_item_id($item_id);
+        
+        if (empty($item_id)) {
+            return;
         }
+        
+        echo "<div class='prodInfo'>";
+        echo "<p>Item ID: <b>$item_id</b></p>";
+        echo "<p>Item SKU: <b>$item_code</b></p>";
+        echo "<div id='stock_info'></div>";
+        echo "</div>";
 
-	}
+        // Check if the product has variations
+        if ($product->is_type('variable')) {
+            ?>
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                $('#color').change(function() {
+                    var selectedColor = $(this).val();
+                    var itemStocks = <?php echo json_encode($item_stocks); ?>;
+                    
+                    var stockInfo = '';
+                    var stockFound = false;
+                    
+                    for (var i = 0; i < itemStocks.length; i++) {
+                        var stock = itemStocks[i];
+                        if ((selectedColor == 'Red' && stock.Color == '17') || (selectedColor == 'Blue' && stock.Color == '126')) {
+                            stockInfo = "<p>Color: <b>" + stock.Color + "</b>, Size: <b>" + stock.Size + "</b>, Quantity: <b>" + stock.Qty + "</b>, Remaining Quantity: <b>" + stock.RemQty + "</b></p>";
+                            stockFound = true;
+                            break;
+                        }
+                    }
+                    
+                    if (stockFound) {
+                        $('#stock_info').html(stockInfo);
+                        if (stock.RemQty == 0) {
+                            $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                        } else {
+                            $('.single_add_to_cart_button').removeAttr('data-backorder');
+                        }
+                    } else {
+                        $('#stock_info').html('<p>No stock information available for the selected color.</p>');
+                    }
+                });
+            });
+            </script>
+            <?php
+        } else {
+            // Single product logic
+            if (!empty($item_stocks) && isset($item_stocks[0]['RemQty'])) {
+                echo "<script type='text/javascript'>
+                jQuery(document).ready(function($) {
+                    var stockInfo = '<p>Remaining Quantity: <b>" . $item_stocks[0]['RemQty'] . "</b></p>';
+                    $('#stock_info').html(stockInfo);
+                    if (" . $item_stocks[0]['RemQty'] . " == 0) {
+                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                    } else {
+                        $('.single_add_to_cart_button').removeAttr('data-backorder');
+                    }
+                });
+                </script>";
+            } else {
+                echo "<script type='text/javascript'>
+                jQuery(document).ready(function($) {
+                    $('#stock_info').html('<p>No stock information available.</p>');
+                });
+                </script>";
+            }
+        }
+    }
 }
