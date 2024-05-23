@@ -109,26 +109,86 @@ function get_item_stock_by_item_id($itemId) {
 
     return $stock_items;
 }
+add_action('woocommerce_after_add_to_cart_form', 'display_product_stock_info', 20);
 
 function display_product_stock_info() {
     global $product;
 
     if ($product) {
+        // Function to get stock information by item code
         $item_code = $product->get_sku();
         $item_id = get_item_id_by_item_code($item_code);
         $item_stocks = get_item_stock_by_item_id($item_id);
-        
-        if (empty($item_id)) {
-            return;
-        }
-        
-        echo "<div class='prodInfo'>";
-        echo "<p>Item ID: <b>$item_id</b></p>";
-        echo "<p>Item SKU: <b>$item_code</b></p>";
-        echo "<div id='stock_info'></div>";
-        echo "</div>";
 
-        // Check if the product has variations
+        // Display information for single products
+        if (!empty($item_id)) {
+            echo "<div class='prodInfo'>";
+            echo "<p>Item ID: <b>$item_id</b></p>";
+            echo "<p>Item SKU: <b>$item_code</b></p>";
+            echo "<div id='stock_info'></div>";
+            echo "</div>";
+
+            if (!empty($item_stocks) && isset($item_stocks[0]['RemQty'])) {
+                echo "<script type='text/javascript'>
+                jQuery(document).ready(function($) {
+                    var stockInfo = '<p>Remaining Quantity: <b>" . $item_stocks[0]['RemQty'] . "</b></p>';
+                    $('#stock_info').html(stockInfo);
+                    if (" . $item_stocks[0]['RemQty'] . " == 0) {
+                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                    } else {
+                        $('.single_add_to_cart_button').removeAttr('data-backorder');
+                    }
+                });
+                </script>";
+            } else {
+                echo "<script type='text/javascript'>
+                jQuery(document).ready(function($) {
+                    $('#stock_info').html('<p>No stock information available.</p>');
+                });
+                </script>";
+            }
+        }
+
+        // Check if the product is a bundle
+        if ($product->is_type('bundle')) {
+            $bundled_items = $product->get_bundled_items();
+            if ($bundled_items) {
+                foreach ($bundled_items as $bundled_item) {
+                    $bundled_product = $bundled_item->get_product();
+                    $bundled_sku = $bundled_product->get_sku();
+                    $bundled_item_id = get_item_id_by_item_code($bundled_sku);
+                    $bundled_item_stocks = get_item_stock_by_item_id($bundled_item_id);
+
+                    echo "<div class='bundledProdInfo'>";
+                    echo "<p>Bundled Product ID: <b>$bundled_item_id</b></p>";
+                    echo "<p>Bundled Product SKU: <b>$bundled_sku</b></p>";
+                    echo "<div id='bundled_stock_info_$bundled_item_id'></div>";
+                    echo "</div>";
+
+                    if (!empty($bundled_item_stocks) && isset($bundled_item_stocks[0]['RemQty'])) {
+                        echo "<script type='text/javascript'>
+                        jQuery(document).ready(function($) {
+                            var bundledStockInfo = '<p>Remaining Quantity: <b>" . $bundled_item_stocks[0]['RemQty'] . "</b></p>';
+                            $('#bundled_stock_info_$bundled_item_id').html(bundledStockInfo);
+                            if (" . $bundled_item_stocks[0]['RemQty'] . " == 0) {
+                                $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                            } else {
+                                $('.single_add_to_cart_button').removeAttr('data-backorder');
+                            }
+                        });
+                        </script>";
+                    } else {
+                        echo "<script type='text/javascript'>
+                        jQuery(document).ready(function($) {
+                            $('#bundled_stock_info_$bundled_item_id').html('<p>No stock information available.</p>');
+                        });
+                        </script>";
+                    }
+                }
+            }
+        }
+		
+		// Check if the product is a variation
         if ($product->is_type('variable')) {
             ?>
             <script type="text/javascript">
@@ -163,27 +223,7 @@ function display_product_stock_info() {
             });
             </script>
             <?php
-        } else {
-            // Single product logic
-            if (!empty($item_stocks) && isset($item_stocks[0]['RemQty'])) {
-                echo "<script type='text/javascript'>
-                jQuery(document).ready(function($) {
-                    var stockInfo = '<p>Remaining Quantity: <b>" . $item_stocks[0]['RemQty'] . "</b></p>';
-                    $('#stock_info').html(stockInfo);
-                    if (" . $item_stocks[0]['RemQty'] . " == 0) {
-                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
-                    } else {
-                        $('.single_add_to_cart_button').removeAttr('data-backorder');
-                    }
-                });
-                </script>";
-            } else {
-                echo "<script type='text/javascript'>
-                jQuery(document).ready(function($) {
-                    $('#stock_info').html('<p>No stock information available.</p>');
-                });
-                </script>";
-            }
         }
+		
     }
 }
