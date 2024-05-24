@@ -149,80 +149,92 @@ function display_product_stock_info() {
         }
 
         // Check if the product is a bundle
-        if ($product->is_type('bundle')) {
-            $bundled_items = $product->get_bundled_items();
-            if ($bundled_items) {
-                foreach ($bundled_items as $bundled_item) {
-                    $bundled_product = $bundled_item->get_product();
-                    $bundled_sku = $bundled_product->get_sku();
-                    $bundled_item_id = get_item_id_by_item_code($bundled_sku);
-                    $bundled_item_stocks = get_item_stock_by_item_id($bundled_item_id);
+		if ($product->is_type('bundle')) {
+			$bundled_items = $product->get_bundled_items();
+			if ($bundled_items) {
+				foreach ($bundled_items as $bundled_item) {
+					$bundled_product = $bundled_item->get_product();
+					$bundled_sku = $bundled_product->get_sku();
+					$bundled_product_name = $bundled_product->get_name();
+					$bundled_item_id = get_item_id_by_item_code($bundled_sku);
+					$bundled_item_stocks = get_item_stock_by_item_id($bundled_item_id);
 
-                    echo "<div class='bundledProdInfo'>";
-                    echo "<p>Bundled Product ID: <b>$bundled_item_id</b></p>";
-                    echo "<p>Bundled Product SKU: <b>$bundled_sku</b></p>";
-                    echo "<div id='bundled_stock_info_$bundled_item_id'></div>";
-                    echo "</div>";
+					echo "<div class='bundledProdInfo'>";
+					echo "<p>Bundled Product ID: <b>$bundled_item_id</b></p>";
+					echo "<p>Bundled Product Name: <b>$bundled_product_name</b></p>";
+					echo "<div id='bundled_stock_info_$bundled_item_id'></div>";
+					echo "</div>";
 
-                    if (!empty($bundled_item_stocks) && isset($bundled_item_stocks[0]['RemQty'])) {
-                        echo "<script type='text/javascript'>
-                        jQuery(document).ready(function($) {
-                            var bundledStockInfo = '<p>Remaining Quantity: <b>" . $bundled_item_stocks[0]['RemQty'] . "</b></p>';
-                            $('#bundled_stock_info_$bundled_item_id').html(bundledStockInfo);
-                            if (" . $bundled_item_stocks[0]['RemQty'] . " == 0) {
-                                $('.single_add_to_cart_button').attr('data-backorder', 'true');
-                            } else {
-                                $('.single_add_to_cart_button').removeAttr('data-backorder');
-                            }
-                        });
-                        </script>";
-                    } else {
-                        echo "<script type='text/javascript'>
-                        jQuery(document).ready(function($) {
-                            $('#bundled_stock_info_$bundled_item_id').html('<p>No stock information available.</p>');
-                        });
-                        </script>";
-                    }
-                }
-            }
-        }
+					if (!empty($bundled_item_stocks) && isset($bundled_item_stocks[0]['RemQty'])) {
+						echo "<script type='text/javascript'>
+						jQuery(document).ready(function($) {
+							var bundledStockInfo = '<p>Remaining Quantity: <b>" . $bundled_item_stocks[0]['RemQty'] . "</b></p>';
+							$('#bundled_stock_info_$bundled_item_id').html(bundledStockInfo);
+							if (" . $bundled_item_stocks[0]['RemQty'] . " == 0) {
+								$('.single_add_to_cart_button').attr('data-backorder', 'true');
+								$('.single_add_to_cart_button').attr('data-out-of-stock-items', function(i, val) {
+									return (val ? val + ', ' : '') + '$bundled_product_name';
+								});
+							}
+						});
+						</script>";
+					} else {
+						echo "<script type='text/javascript'>
+						jQuery(document).ready(function($) {
+							$('#bundled_stock_info_$bundled_item_id').html('<p>No stock information available.</p>');
+						});
+						</script>";
+					}
+				}
+			}
+		}
 		
-		// Check if the product is a variation
+        // Check if the product is a variation
         if ($product->is_type('variable')) {
             ?>
             <script type="text/javascript">
             jQuery(document).ready(function($) {
-                $('#color').change(function() {
-                    var selectedColor = $(this).val();
-                    var itemStocks = <?php echo json_encode($item_stocks); ?>;
-                    
+                var itemStocks = <?php echo json_encode($item_stocks); ?>;
+                var backorderRequired = false;
+
+                for (var i = 0; i < itemStocks.length; i++) {
+                    if (itemStocks[i].RemQty == 0) {
+                        backorderRequired = true;
+                        break;
+                    }
+                }
+
+                if (backorderRequired) {
+                    $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                } else {
+                    $('.single_add_to_cart_button').removeAttr('data-backorder');
+                }
+
+                // Event listener to update stock info when a variation is selected
+                $('form.variations_form').on('change', '.variations select', function() {
                     var stockInfo = '';
                     var stockFound = false;
-                    
+
                     for (var i = 0; i < itemStocks.length; i++) {
                         var stock = itemStocks[i];
-                        if ((selectedColor == 'Red' && stock.Color == '17') || (selectedColor == 'Blue' && stock.Color == '126')) {
-                            stockInfo = "<p>Color: <b>" + stock.Color + "</b>, Size: <b>" + stock.Size + "</b>, Quantity: <b>" + stock.Qty + "</b>, Remaining Quantity: <b>" + stock.RemQty + "</b></p>";
+                        if (stock.RemQty == 0) {
                             stockFound = true;
+                            stockInfo = "<p>Color: <b>" + stock.Color + "</b>, Size: <b>" + stock.Size + "</b>, Quantity: <b>" + stock.Qty + "</b>, Remaining Quantity: <b>" + stock.RemQty + "</b></p>";
                             break;
                         }
                     }
-                    
+
                     if (stockFound) {
                         $('#stock_info').html(stockInfo);
-                        if (stock.RemQty == 0) {
-                            $('.single_add_to_cart_button').attr('data-backorder', 'true');
-                        } else {
-                            $('.single_add_to_cart_button').removeAttr('data-backorder');
-                        }
+                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
                     } else {
-                        $('#stock_info').html('<p>No stock information available for the selected color.</p>');
+                        $('#stock_info').html('<p>No stock information available for the selected attributes.</p>');
+                        $('.single_add_to_cart_button').removeAttr('data-backorder');
                     }
                 });
             });
             </script>
             <?php
         }
-		
     }
 }

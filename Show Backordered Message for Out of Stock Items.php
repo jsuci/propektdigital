@@ -5,18 +5,19 @@ function custom_backorder_script() {
             jQuery(document).ready(function($) {
                 $('.single_add_to_cart_button').on('click', function(event) {
                     var isBackorder = $(this).data('backorder');
+                    var outOfStockItems = $(this).data('out-of-stock-items');
                     
                     if (isBackorder) {
                         event.preventDefault(); // Prevent the default action
                         
                         // Show the modal
-                        $('body').append('<div id="backorder-modal" class="modal"><div class="modal-content"><span class="close">&times;</span><p>We apologize, but the item you ordered is currently on backorder due to high demand. You can still place an order, but please expect a delay in shipping. Thank you for your patience and understanding.</p></div></div>');
+                        $('body').append('<div id="backorder-modal" class="modal"><div class="modal-content"><span class="close">&times;</span><p>The following items are out of stock: ' + outOfStockItems + '. You may proceed with placing your order, but please anticipate a delay in shipping. We appreciate your patience and understanding.</p></div></div>');
 
                         // Style the modal
                         $('.modal').css({
                             display: 'block',
                             position: 'fixed',
-                            zIndex: '1',
+                            zIndex: '999',
                             paddingTop: '60px',
                             left: '0',
                             top: '0',
