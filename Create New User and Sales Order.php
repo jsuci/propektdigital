@@ -262,6 +262,7 @@ function update_erp_user_from_order($order) {
                 <fax></fax>
                 <address2>'.$billing_address_2.'</address2>
                 <postalcode>'.$billing_postcode.'</postalcode>
+                <website></website>
             </updateUser>
         </soap:Body>
     </soap:Envelope>';
