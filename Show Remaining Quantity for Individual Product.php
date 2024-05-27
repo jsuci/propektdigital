@@ -53,6 +53,7 @@ function get_item_id_by_item_code($itemCode) {
 }
 
 function get_item_stock_by_item_id($itemId) {
+    // Define the SOAP request
     $soap_request = '<?xml version="1.0" encoding="utf-8"?>
     <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
         <soap:Header>
@@ -62,8 +63,75 @@ function get_item_stock_by_item_id($itemId) {
         </soap:Header>
         <soap:Body>
             <GetStockByItemId xmlns="http://klozinc.exocloud.ca/">
-				<itemId>'.$itemId.'</itemId>
-			</GetStockByItemId>
+                <itemId>'.$itemId.'</itemId>
+            </GetStockByItemId>
+        </soap:Body>
+    </soap:Envelope>';
+
+    // Initialize cURL
+    $curl = curl_init();
+
+    // Set cURL options
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'http://sandbox.klozinc.exocloud.ca/api/exowebservice.asmx',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => $soap_request,
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: text/xml; charset=utf-8',
+            'SOAPAction: "http://klozinc.exocloud.ca/GetStockByItemId"'
+        ),
+    ));
+
+    // Execute the cURL request
+    $response = curl_exec($curl);
+    curl_close($curl);
+
+    // Load the XML response
+    $xml = simplexml_load_string($response);
+
+    // Register the namespaces
+    $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+    $xml->registerXPathNamespace('ns', 'http://klozinc.exocloud.ca/');
+
+    // Extract stock items
+    $stock_items = [];
+    foreach ($xml->xpath('//ns:Stock') as $stock) {
+        $colorId = (string)$stock->Color;
+        $sizeId = (string)$stock->Size;
+        
+        $colorName = $colorId ? get_color_name_by_color_id($colorId) : null;
+        $sizeName = $sizeId ? get_size_name_by_size_id($sizeId) : null;
+        
+        $stock_items[] = [
+            'Item' => (string)$stock->Item,
+            'ColorID' => $colorId,
+            'ColorName' => $colorName,
+            'SizeID' => $sizeId,
+            'SizeName' => $sizeName,
+            'Qty' => (float)$stock->Qty,
+            'RemQty' => (float)$stock->RemQty
+        ];
+    }
+
+    return $stock_items;
+}
+
+function get_color_name_by_color_id($colorId) {
+    $soap_request = '<?xml version="1.0" encoding="utf-8"?>
+    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        <soap:Header>
+            <KlozHeader xmlns="http://klozinc.exocloud.ca/">
+                <apikey>Test@apikloz</apikey>
+            </KlozHeader>
+        </soap:Header>
+        <soap:Body>
+            <GetAllColor xmlns="http://klozinc.exocloud.ca/" />
         </soap:Body>
     </soap:Envelope>';
 
@@ -81,7 +149,7 @@ function get_item_stock_by_item_id($itemId) {
         CURLOPT_POSTFIELDS => $soap_request,
         CURLOPT_HTTPHEADER => array(
             'Content-Type: text/xml; charset=utf-8',
-            'SOAPAction: "http://klozinc.exocloud.ca/GetStockByItemId"'
+            'SOAPAction: "http://klozinc.exocloud.ca/GetAllColor"'
         ),
     ));
 
@@ -95,20 +163,75 @@ function get_item_stock_by_item_id($itemId) {
     $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
     $xml->registerXPathNamespace('ns', 'http://klozinc.exocloud.ca/');
 
-    // Extract stock items
-    $stock_items = [];
-    foreach ($xml->xpath('//ns:Stock') as $stock) {
-        $stock_items[] = [
-            'Item' => (string)$stock->Item,
-            'Color' => (string)$stock->Color,
-            'Size' => (string)$stock->Size,
-            'Qty' => (float)$stock->Qty,
-            'RemQty' => (float)$stock->RemQty
-        ];
+    // Extract colors
+    $colors = $xml->xpath('//ns:GetAllColorResult/ns:Color');
+    
+    // Find the color name by ColorId
+    foreach ($colors as $color) {
+        if ((string)$color->id == $colorId) {
+            return (string)$color->ColorName;
+        }
     }
 
-    return $stock_items;
+    return null; // Return null if the colorId is not found
 }
+
+function get_size_name_by_size_id($sizeId) {
+    $soap_request = '<?xml version="1.0" encoding="utf-8"?>
+    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        <soap:Header>
+            <KlozHeader xmlns="http://klozinc.exocloud.ca/">
+                <apikey>Test@apikloz</apikey>
+            </KlozHeader>
+        </soap:Header>
+        <soap:Body>
+            <GetAllSize xmlns="http://klozinc.exocloud.ca/" />
+        </soap:Body>
+    </soap:Envelope>';
+
+    $curl = curl_init();
+
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'http://sandbox.klozinc.exocloud.ca/api/exowebservice.asmx',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => $soap_request,
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: text/xml; charset=utf-8',
+            'SOAPAction: "http://klozinc.exocloud.ca/GetAllSize"'
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    curl_close($curl);
+
+    // Load the XML response
+    $xml = simplexml_load_string($response);
+
+    // Register the namespaces
+    $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+    $xml->registerXPathNamespace('ns', 'http://klozinc.exocloud.ca/');
+
+    // Extract sizes
+    $sizes = $xml->xpath('//ns:GetAllSizeResult/ns:Size');
+    
+    // Find the size name by sizeId
+    foreach ($sizes as $size) {
+        if ((string)$size->id == $sizeId) {
+            return (string)$size->SizeName;
+        }
+    }
+
+    return null; // Return null if the sizeId is not found
+}
+
+
+
 
 function display_product_stock_info() {
     global $product;
@@ -118,6 +241,7 @@ function display_product_stock_info() {
         $item_code = $product->get_sku();
         $item_id = get_item_id_by_item_code($item_code);
         $item_stocks = get_item_stock_by_item_id($item_id);
+        $product_name = $product->get_name();
 
         // Display information for single products
         if (!empty($item_id)) {
@@ -195,46 +319,32 @@ function display_product_stock_info() {
             <script type="text/javascript">
             jQuery(document).ready(function($) {
                 var itemStocks = <?php echo json_encode($item_stocks); ?>;
+                var productName = <?php echo json_encode($product_name); ?>;
+                var outOfStockItems = [];
                 var backorderRequired = false;
 
                 for (var i = 0; i < itemStocks.length; i++) {
-                    if (itemStocks[i].RemQty == 0) {
+                    var stock = itemStocks[i];
+
+                    if (stock.RemQty == 0) {
                         backorderRequired = true;
-                        break;
+                        outOfStockItems.push(productName + '_' + stock.ColorName + '_' + stock.SizeName);
                     }
+
                 }
 
                 if (backorderRequired) {
                     $('.single_add_to_cart_button').attr('data-backorder', 'true');
+                    $('.single_add_to_cart_button').attr('data-out-of-stock-items', outOfStockItems.join(', '));
                 } else {
                     $('.single_add_to_cart_button').removeAttr('data-backorder');
+                    $('.single_add_to_cart_button').removeAttr('data-out-of-stock-items');
                 }
 
-                // Event listener to update stock info when a variation is selected
-                $('form.variations_form').on('change', '.variations select', function() {
-                    var stockInfo = '';
-                    var stockFound = false;
-
-                    for (var i = 0; i < itemStocks.length; i++) {
-                        var stock = itemStocks[i];
-                        if (stock.RemQty == 0) {
-                            stockFound = true;
-                            stockInfo = "<p>Color: <b>" + stock.Color + "</b>, Size: <b>" + stock.Size + "</b>, Quantity: <b>" + stock.Qty + "</b>, Remaining Quantity: <b>" + stock.RemQty + "</b></p>";
-                            break;
-                        }
-                    }
-
-                    if (stockFound) {
-                        $('#stock_info').html(stockInfo);
-                        $('.single_add_to_cart_button').attr('data-backorder', 'true');
-                    } else {
-                        $('#stock_info').html('<p>No stock information available for the selected attributes.</p>');
-                        $('.single_add_to_cart_button').removeAttr('data-backorder');
-                    }
-                });
             });
             </script>
             <?php
         }
+
     }
 }
